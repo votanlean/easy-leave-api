@@ -4,9 +4,12 @@ var router = express.Router();
 const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
+const {Base64} = require('js-base64');
 
 // If modifying these scopes, delete token.json.
-const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/gmail.send'
+];
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
@@ -21,7 +24,7 @@ fs.readFile('credentials.json', (err, content) => {
   if (err) return console.log('Error loading client secret file:', err);
   // Authorize a client with credentials, then call the Gmail API.
   const credentials = {...JSON.parse(content), code: req.query.code}
-  authorize(credentials, res, listLabels);
+  authorize(credentials, res, sendMessage);
 });
 });
 
@@ -121,5 +124,43 @@ function listLabels(auth, response) {
     }
   });
 }
+
+/**
+ * Send Message.
+ *
+ * @param  {String} userId User's email address. The special value 'me'
+ * can be used to indicate the authenticated user.
+ * @param  {String} email RFC 5322 formatted String.
+ * @param  {Function} callback Function to call when the request is complete.
+ */
+function sendMessage(auth, response) {
+  const gmail = google.gmail({version: 'v1', auth});
+  //userId, email, 
+  // Using the js-base64 library for encoding:
+  // https://www.npmjs.com/package/js-base64
+  const userId = 'me';
+  const email = makeEmail('hoangtuan910@gmail.com', 'votanlean@gmail.com', 'Ngoc Ngan Leave request', 'Hi boss, I wanna take leave today!!!')
+  var base64EncodedEmail = Base64.encodeURI(email);
+  var request = gmail.users.messages.send({
+    'userId': userId,
+    'resource': {
+      'raw': base64EncodedEmail
+    }
+  });
+  request.then(res => response.json(res));
+}
+
+function makeEmail(to, from, subject, message) {
+	var str = ["Content-Type: text/plain; charset=\"UTF-8\"\n",
+		"MIME-Version: 1.0\n",
+		"Content-Transfer-Encoding: 7bit\n",
+		"to: ", to, "\n",
+		"from: ", from, "\n",
+		"subject: ", subject, "\n\n",
+		message
+  ].join('');
+  return str;
+}
+
 
 module.exports = router;
